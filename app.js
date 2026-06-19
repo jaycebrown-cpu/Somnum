@@ -186,7 +186,7 @@ function drawVisualizer() {
     // B: Guided Exercise Override - Attention Training Mode (Cosmic Solar Engine Fixed Array)
     if (appState.activeExercise === 'attention') {
         if (!appState.orbitSystem) {
-            appState.orbitSystem = { activeRing: 0, currentAngle: 0, lifetimeRemaining: 180, dotSize: 0, rings: [50, 90, 130] };
+            appState.orbitSystem = { activeRing: 0, currentAngle: 0, lifetimeRemaining: 180, dotSize: 0, rings: [40, 80, 120] };
         }
         const sys = appState.orbitSystem;
 
