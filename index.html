@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Somnum Engine</title>
     <style>
-        /* 1. SOLID RESET & VIEWPORT FIXES */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -23,7 +22,6 @@
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         }
 
-        /* Fixed structural grid layers */
         .app-container {
             width: 100%;
             height: 100vh;
@@ -36,7 +34,6 @@
             z-index: 5;
         }
 
-        /* Decorative outer frames */
         .frame-corner {
             position: absolute;
             width: 16px;
@@ -50,7 +47,6 @@
         .bottom-left { bottom: 15px; left: 15px; border-right: none; border-top: none; }
         .bottom-right { bottom: 15px; right: 15px; border-left: none; border-top: none; }
 
-        /* Row 1: Header Tracker */
         .app-header {
             width: 100%;
             display: flex;
@@ -61,7 +57,6 @@
             opacity: 0.6;
         }
 
-        /* Row 2: Menu Buttons */
         .exercise-selector-container {
             display: flex;
             gap: 10px;
@@ -78,7 +73,6 @@
             cursor: pointer;
             text-transform: uppercase;
             letter-spacing: 1px;
-            transition: background 0.2s, color 0.2s;
         }
         .exercise-btn.active {
             background: #ffffff;
@@ -86,7 +80,6 @@
             border-color: #ffffff;
         }
 
-        /* Row 3: Visualizer Core Area */
         .visualizer-wrapper {
             position: relative;
             width: 260px;
@@ -102,10 +95,9 @@
             top: 0;
             left: 0;
             z-index: 2;
-            pointer-events: none; /* Crucial: clicks pass through graphic paths */
+            pointer-events: none;
         }
         
-        /* Central Telemetry Layer */
         .circadian-phase {
             display: flex;
             flex-direction: column;
@@ -133,7 +125,6 @@
             text-transform: uppercase;
         }
 
-        /* Row 4: Static Controls Dock */
         .controls-wrapper {
             width: 100%;
             max-width: 280px;
@@ -178,9 +169,7 @@
             cursor: pointer;
         }
         .timer-opt-btn.active { border-color: #ffffff; background: rgba(255,255,255,0.1); }
-        #cancel-timer-btn { border-color: #ff4a4a; color: #ff4a4a; }
 
-        /* The Play Button Shape Layout */
         .control-btn {
             width: 54px;
             height: 54px;
@@ -289,7 +278,6 @@
     }
     resizeCanvas();
 
-    // GRAPHICS GENERATION LOOPS
     function renderLoop() {
         ctx.clearRect(0, 0, 260, 260);
         const cx = 130;
@@ -297,9 +285,20 @@
         appState.renderTime += 0.02;
 
         let dataArray = new Uint8Array(32);
+        // Safely check if analyser exists so it never throws an unhandled error on page load
         if (appState.isPlaying && appState.analyserNode) {
             appState.analyserNode.getByteFrequencyData(dataArray);
         }
 
         let currentTargetPhase = CIRCADIAN_PHASES[appState.manualPhaseIndex];
 
+        if (appState.activeExercise === 'meditate') {
+            ctx.beginPath();
+            ctx.strokeStyle = '#ff7a00'; 
+            ctx.lineWidth = 2.5;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(255, 122, 0, 0.5)';
+
+            for (let i = 0; i <= 64; i++) {
+                const angle = (i / 64) * Math.PI * 2;
+                const audioMod = dataArray[i % 32] ? (dataArray[i % 32] / 255) * 15 : 0;
