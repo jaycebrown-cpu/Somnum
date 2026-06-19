@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Endel Engine</title>
+    <!-- PWA Manifest & iOS Theme Support -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="frame-corner top-left"></div>
+    <div class="frame-corner top-right"></div>
+    <div class="frame-corner bottom-left"></div>
+    <div class="frame-corner bottom-right"></div>
+
+    <!-- Interactive Gesture Area Container -->
+    <main class="app-container" id="gesture-zone">
+        <header class="app-header">
+            <span class="system-status">● Core Engine Active</span>
+            <span id="frequency-readout">000.00 Hz</span>
+        </header>
+
+        <div class="exercise-selector-container">
+            <button class="exercise-btn" data-type="breathe">Breathwork</button>
+            <button class="exercise-btn" data-type="meditate">Meditation</button>
+            <button class="exercise-btn" data-type="attention">Attention</button>
+        </div>
+
+        <div class="visualizer-wrapper">
+            <div class="geo-ring outer-ring"></div>
+            <div class="geo-ring mid-ring"></div>
+            <canvas id="sound-visualizer"></canvas>
+            
+            <div class="circadian-phase">
+                <span id="current-state">Focus</span>
+                <span id="timer-display">00:00:00</span>
+                <div class="swipe-indicator">‹ swipe to shift ›</div>
+            </div>
+        </div>
+
+        <div class="controls-wrapper">
+            <div class="slider-container">
+                <span class="slider-label">Intens</span>
+                <input type="range" id="intensity-slider" class="slider" min="0" max="100" value="50">
+            </div>
+
+            <div id="pomo-module-container" class="pomo-container" style="display: none;">
+                <button id="pomo-toggle-btn" class="pomo-btn">Start Focus Cycle</button>
+                <div id="pomo-status-text" class="pomo-status">Session 1/4</div>
+            </div>
+
+            <div class="timer-select-container">
+                <button class="timer-opt-btn" data-minutes="1">1M</button>
+                <button class="timer-opt-btn" data-minutes="15">15M</button>
+                <button class="timer-opt-btn" data-minutes="30">30M</button>
+                <button class="timer-opt-btn" id="cancel-timer-btn" style="display: none;">✕</button>
+            </div>
+
+            <button id="play-pause-btn" class="control-btn">
+                <span class="btn-icon"></span>
+            </button>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html
