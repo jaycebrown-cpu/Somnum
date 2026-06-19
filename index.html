@@ -39,7 +39,7 @@
             width: 16px;
             height: 16px;
             border: 1px solid rgba(255, 255, 255, 0.15);
-            z-index: 10;
+            z-index: 15;
             pointer-events: none;
         }
         .top-left { top: 20px; left: 20px; border-right: none; border-bottom: none; }
@@ -69,6 +69,8 @@
             letter-spacing: 2px;
             text-transform: uppercase;
             opacity: 0.6;
+            position: relative;
+            z-index: 10;
         }
         .system-status { display: flex; align-items: center; gap: 6px; }
 
@@ -77,6 +79,8 @@
             display: flex;
             gap: 8px;
             margin-top: 10px;
+            position: relative;
+            z-index: 10; /* Elevated to sit on top of canvas overlay */
         }
         .exercise-btn {
             background: transparent;
@@ -107,6 +111,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            z-index: 1;
         }
         canvas {
             position: absolute;
@@ -115,6 +120,7 @@
             top: 0;
             left: 0;
             z-index: 3;
+            pointer-events: none; /* Allows click events to pass straight through canvas */
         }
         .geo-ring {
             position: absolute;
@@ -163,6 +169,8 @@
             flex-direction: column;
             gap: 20px;
             align-items: center;
+            position: relative;
+            z-index: 10; /* Elevated to sit on top of canvas overlay */
         }
         .slider-container {
             width: 100%;
@@ -284,241 +292,3 @@
                 <div id="pomo-status-text" class="pomo-status">Session 1/4</div>
             </div>
 
-            <div class="timer-select-container">
-                <button class="timer-opt-btn" data-minutes="1">1M</button>
-                <button class="timer-opt-btn" data-minutes="15">15M</button>
-                <button class="timer-opt-btn" data-minutes="30">30M</button>
-    <script>
-    // 1. Monolithic State Architecture
-    const appState = {
-        audioContext: null,
-        brownNoiseNode: null,
-        filterNode: null,
-        analyserNode: null,
-        gainNode: null,
-        isPlaying: false,
-        currentPhase: '',
-        manualPhaseIndex: -1,
-        sleepTimerId: null,
-        sleepTimeRemaining: 0,
-        pomoTimerId: null,
-        pomoIsActive: false,
-        pomoCurrentMode: 'work', // 'work' or 'break'
-        pomoTimeRemaining: 0,
-        pomoCycleCount: 1,
-        activeExercise: null, // null, 'breathe', 'meditate', or 'attention'
-        renderTime: 0
-    };
-
-    const CIRCADIAN_PHASES = [
-        { name: 'Sleep', startHour: 22, endHour: 5, bgColor: '#020204', color: '#5b83b3', frequency: 120 },
-        { name: 'Wake Up', startHour: 5, endHour: 9, bgColor: '#060604', color: '#dfb15b', frequency: 280 },
-        { name: 'Focus', startHour: 9, endHour: 17, bgColor: '#030303', color: '#ffffff', frequency: 500 },
-        { name: 'Relax', startHour: 17, endHour: 22, bgColor: '#050406', color: '#d9815b', frequency: 220 }
-    ];
-
-    // 2. Visual Systems Rendering & Logic
-    const canvas = document.getElementById('sound-visualizer');
-    const ctx = canvas.getContext('2d');
-
-    function resizeCanvas() {
-        const rect = canvas.parentElement.getBoundingClientRect();
-        canvas.width = rect.width * window.devicePixelRatio;
-        canvas.height = rect.height * window.devicePixelRatio;
-        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    function renderLoop() {
-        const width = canvas.width / window.devicePixelRatio;
-        const height = canvas.height / window.devicePixelRatio;
-        ctx.clearRect(0, 0, width, height);
-
-        const centerX = width / 2;
-        const centerY = height / 2;
-        appState.renderTime += 0.02;
-
-        let dataArray = new Uint8Array(32);
-        if (appState.isPlaying && appState.analyserNode) {
-            appState.analyserNode.getByteFrequencyData(dataArray);
-        }
-
-        const currentAccentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
-
-        if (appState.activeExercise === 'meditate') {
-            // SQUIGGLY ORANGE STRING RENDERING ENGINE
-            ctx.beginPath();
-            ctx.strokeStyle = '#ff7a00'; // Pure bright orange string
-            ctx.lineWidth = 2.5;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = 'rgba(255, 122, 0, 0.4)';
-
-            const baseRadius = Math.min(width, height) * 0.28;
-
-            for (let i = 0; i <= 128; i++) {
-                const angle = (i / 128) * Math.PI * 2;
-                
-                // Audio signal + layered mathematical noise waves
-                const audioMod = dataArray[i % 32] ? (dataArray[i % 32] / 255) * 22 : 0;
-                const wave1 = Math.sin(angle * 8 + appState.renderTime * 1.5) * 12;
-                const wave2 = Math.cos(angle * 4 - appState.renderTime * 0.8) * 6;
-                
-                const finalRadius = baseRadius + wave1 + wave2 + audioMod;
-                const x = centerX + Math.cos(angle) * finalRadius;
-                const y = centerY + Math.sin(angle) * finalRadius;
-
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-            ctx.shadowBlur = 0; // Clear shadow layer for system performance
-
-        } else if (appState.activeExercise === 'breathe') {
-            // EXPANDING OVAL / DUAL HORIZONTAL CORE LOBES
-            const audioScale = dataArray[0] ? (dataArray[0] / 255) * 15 : 0;
-            
-            // Core breathing cycle (4s inhale, 4s exhale)
-            const breathCycle = Math.sin(Date.now() / 1273); 
-            const horizontalExpansion = 55 + (breathCycle * 40) + audioScale;
-            const verticalExpansion = 40 + (breathCycle * 10) + (audioScale * 0.5);
-
-            ctx.beginPath();
-            ctx.strokeStyle = currentAccentColor;
-            ctx.lineWidth = 1.5;
-
-            // Generate structural mesh of concentric breathing vectors
-            for (let i = 0; i < 3; i++) {
-                const layerOffset = i * 12;
-                const rx = Math.max(5, horizontalExpansion - layerOffset);
-                const ry = Math.max(5, verticalExpansion - (layerOffset * 0.5));
-                
-                ctx.beginPath();
-                ctx.ellipse(centerX, centerY, rx, ry, 0, 0, Math.PI * 2);
-                ctx.strokeStyle = i === 0 ? currentAccentColor : `rgba(255,255,255,${0.4 - i * 0.15})`;
-                ctx.stroke();
-            }
-
-            // Central anchoring node
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 6 + (audioScale * 0.2), 0, Math.PI * 2);
-            ctx.fillStyle = currentAccentColor;
-            ctx.fill();
-
-        } else {
-            // DEFAULT AMBIENT STATE / ATTENTION MESH (Circular Geometric Rings)
-            ctx.beginPath();
-            ctx.strokeStyle = currentAccentColor;
-            ctx.lineWidth = 1.5;
-            const baseRadius = Math.min(width, height) * 0.3;
-
-            for (let i = 0; i <= 64; i++) {
-                const angle = (i / 64) * Math.PI * 2;
-                const audioMod = dataArray[i % 32] ? (dataArray[i % 32] / 255) * 18 : 0;
-                const organicWarp = Math.sin(angle * 3 + appState.renderTime) * 4;
-
-                const r = baseRadius + audioMod + organicWarp;
-                const x = centerX + Math.cos(angle) * r;
-                const y = centerY + Math.sin(angle) * r;
-
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-            ctx.stroke();
-        }
-
-        requestAnimationFrame(renderLoop);
-    }
-    requestAnimationFrame(renderLoop);
-
-    // 3. Circadian Cycle Mechanics
-    function applyPhaseData(phase) {
-        appState.currentPhase = phase.name;
-        document.getElementById('current-state').textContent = phase.name;
-        document.documentElement.style.setProperty('--bg-color', phase.bgColor);
-        document.documentElement.style.setProperty('--accent-color', phase.color);
-        document.getElementById('frequency-readout').textContent = `${phase.frequency.toFixed(2)} Hz`;
-        
-        if (appState.filterNode && appState.audioContext) {
-            appState.filterNode.frequency.setValueAtTime(phase.frequency, appState.audioContext.currentTime);
-        }
-
-        const pomoUI = document.getElementById('pomo-module-container');
-        if (phase.name === 'Focus') {
-            pomoUI.style.display = 'flex';
-        } else {
-            pomoUI.style.display = 'none';
-            if (appState.pomoIsActive) resetPomodoroEngine();
-        }
-    }
-
-    function updateCircadianClock() {
-        const now = new Date();
-        
-        // Render system time asset if no countdown active
-        if (appState.sleepTimerId === null && !appState.pomoIsActive) {
-            document.getElementById('timer-display').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-        }
-
-        if (appState.manualPhaseIndex === -1) {
-            const currentHour = now.getHours();
-            const activePhase = CIRCADIAN_PHASES.find(p => {
-                return p.startHour > p.endHour 
-                    ? (currentHour >= p.startHour || currentHour < p.endHour) 
-                    : (currentHour >= p.startHour && currentHour < p.endHour);
-            });
-            if (activePhase && appState.currentPhase !== activePhase.name) {
-                applyPhaseData(activePhase);
-            }
-        }
-    }
-
-    // 4. Touch Navigation Swipe Tracking
-    let touchStartX = 0;
-    const gestureZone = document.getElementById('gesture-zone');
-    gestureZone.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-    gestureZone.addEventListener('touchend', (e) => {
-        const touchEndX = e.changedTouches[0].screenX;
-        const swipeDistance = touchEndX - touchStartX;
-        const threshold = 60;
-
-        if (Math.abs(swipeDistance) < threshold) return;
-
-        if (appState.manualPhaseIndex === -1) {
-            appState.manualPhaseIndex = CIRCADIAN_PHASES.findIndex(p => p.name === appState.currentPhase);
-        }
-
-        if (swipeDistance < 0) {
-            appState.manualPhaseIndex = (appState.manualPhaseIndex + 1) % CIRCADIAN_PHASES.length;
-        } else {
-            appState.manualPhaseIndex = (appState.manualPhaseIndex - 1 + CIRCADIAN_PHASES.length) % CIRCADIAN_PHASES.length;
-        }
-
-        // Drop manual exercise flags if manually choosing cycle states
-        document.querySelectorAll('.exercise-btn').forEach(btn => btn.classList.remove('active'));
-        appState.activeExercise = null;
-
-        applyPhaseData(CIRCADIAN_PHASES[appState.manualPhaseIndex]);
-    }, { passive: true });
-
-    // 5. Native Browser DSP Sound Synthesis
-    function initAudio() {
-        appState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const sampleRate = appState.audioContext.sampleRate;
-        const bufferSize = 2 * sampleRate;
-        const noiseBuffer = appState.audioContext.createBuffer(1, bufferSize, sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        
-        let lastOut = 0.0;
-        for (let i = 0; i < bufferSize; i++) {
-            const white = Math.random() * 2 - 1;
-            // 1st order brown noise generation filter
-            output[i] = (lastOut + (0.02 * white)) / 1.02;
-            lastOut = output[i];
-            output[i] *= 3.5; 
-        }
-
-        appState.brownNoiseNode = appState.audioContext.createBufferSource();
-        appState.brownNoiseNode.buffer = noiseBuffer;
-        appState.brownNoiseNode.loop = true;
