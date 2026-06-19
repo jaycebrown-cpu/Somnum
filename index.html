@@ -4,15 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Somnum Engine</title>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        :root {
-            --bg-color: #030303;
-            --accent-color: #ffffff;
-            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        }
-
+        /* 1. SOLID RESET & VIEWPORT FIXES */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -27,35 +20,37 @@
             overflow: hidden;
             background-color: #030303;
             color: #ffffff;
-            font-family: var(--font-mono);
-            transition: background-color 1.5s cubic-bezier(0.25, 1, 0.5, 1);
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         }
 
+        /* Fixed structural grid layers */
+        .app-container {
+            width: 100%;
+            height: 100vh;
+            display: grid;
+            grid-template-rows: 60px 50px 1fr 180px;
+            align-items: center;
+            justify-items: center;
+            padding: 20px;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* Decorative outer frames */
         .frame-corner {
             position: absolute;
             width: 16px;
             height: 16px;
             border: 1px solid rgba(255, 255, 255, 0.15);
-            z-index: 15;
+            z-index: 20;
             pointer-events: none;
         }
-        .top-left { top: 20px; left: 20px; border-right: none; border-bottom: none; }
-        .top-right { top: 20px; right: 20px; border-left: none; border-bottom: none; }
-        .bottom-left { bottom: 20px; left: 20px; border-right: none; border-top: none; }
-        .bottom-right { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+        .top-left { top: 15px; left: 15px; border-right: none; border-bottom: none; }
+        .top-right { top: 15px; right: 15px; border-left: none; border-bottom: none; }
+        .bottom-left { bottom: 15px; left: 15px; border-right: none; border-top: none; }
+        .bottom-right { bottom: 15px; right: 15px; border-left: none; border-top: none; }
 
-        .app-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            padding: 30px 20px;
-            position: relative;
-            z-index: 2;
-        }
-
+        /* Row 1: Header Tracker */
         .app-header {
             width: 100%;
             display: flex;
@@ -64,30 +59,26 @@
             letter-spacing: 2px;
             text-transform: uppercase;
             opacity: 0.6;
-            position: relative;
-            z-index: 10;
         }
-        .system-status { display: flex; align-items: center; gap: 6px; }
 
+        /* Row 2: Menu Buttons */
         .exercise-selector-container {
             display: flex;
-            gap: 8px;
-            margin-top: 10px;
-            position: relative;
-            z-index: 10;
+            gap: 10px;
+            z-index: 30;
         }
         .exercise-btn {
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             color: #ffffff;
-            font-family: var(--font-mono);
-            font-size: 0.7rem;
-            padding: 6px 14px;
+            font-family: inherit;
+            font-size: 0.75rem;
+            padding: 6px 16px;
             border-radius: 20px;
             cursor: pointer;
-            transition: all 0.3s ease;
             text-transform: uppercase;
             letter-spacing: 1px;
+            transition: background 0.2s, color 0.2s;
         }
         .exercise-btn.active {
             background: #ffffff;
@@ -95,17 +86,14 @@
             border-color: #ffffff;
         }
 
+        /* Row 3: Visualizer Core Area */
         .visualizer-wrapper {
             position: relative;
-            width: 65vmin;
-            height: 65vmin;
-            max-width: 260px;
-            max-height: 260px;
+            width: 260px;
+            height: 260px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            z-index: 1;
-            margin: 10px 0;
+            justify-content: center;
         }
         canvas {
             position: absolute;
@@ -113,56 +101,47 @@
             height: 100%;
             top: 0;
             left: 0;
-            z-index: 3;
-            pointer-events: none;
+            z-index: 2;
+            pointer-events: none; /* Crucial: clicks pass through graphic paths */
         }
-        .geo-ring {
-            position: absolute;
-            border: 1px dashed rgba(255, 255, 255, 0.05);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-        .outer-ring { width: 100%; height: 100%; animation: spin 120s linear infinite; }
-        .mid-ring { width: 75%; height: 75%; animation: spin 60s linear infinite reverse; }
-
+        
+        /* Central Telemetry Layer */
         .circadian-phase {
-            position: absolute;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             text-align: center;
-            z-index: 4;
+            z-index: 10;
             pointer-events: none;
         }
         #current-state {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             letter-spacing: 4px;
             text-transform: uppercase;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
         #timer-display {
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             opacity: 0.5;
             letter-spacing: 1px;
         }
         .swipe-indicator {
             font-size: 0.55rem;
-            opacity: 0.25;
-            margin-top: 12px;
+            opacity: 0.3;
+            margin-top: 14px;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
 
+        /* Row 4: Static Controls Dock */
         .controls-wrapper {
             width: 100%;
-            max-width: 300px;
+            max-width: 280px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 16px;
             align-items: center;
-            position: relative;
-            z-index: 10;
+            z-index: 30;
         }
         .slider-container {
             width: 100%;
@@ -170,50 +149,49 @@
             align-items: center;
             gap: 12px;
         }
-        .slider-label { font-size: 0.65rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
+        .slider-label { font-size: 0.65rem; opacity: 0.5; text-transform: uppercase; }
         .slider {
             flex-grow: 1;
             -webkit-appearance: none;
-            appearance: none;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.2);
             height: 2px;
             outline: none;
         }
         .slider::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background: #ffffff;
             cursor: pointer;
         }
 
-        .timer-select-container { display: flex; gap: 10px; }
-        .timer-opt-btn, .pomo-btn {
+        .timer-select-container { display: flex; gap: 8px; }
+        .timer-opt-btn {
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             color: #ffffff;
-            font-family: var(--font-mono);
+            font-family: inherit;
             font-size: 0.65rem;
             padding: 6px 12px;
             border-radius: 4px;
             cursor: pointer;
         }
-        .timer-opt-btn.active { border-color: #ffffff; background: rgba(255,255,255,0.05); }
+        .timer-opt-btn.active { border-color: #ffffff; background: rgba(255,255,255,0.1); }
+        #cancel-timer-btn { border-color: #ff4a4a; color: #ff4a4a; }
 
+        /* The Play Button Shape Layout */
         .control-btn {
-            width: 56px;
-            height: 56px;
+            width: 54px;
+            height: 54px;
             border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.4);
             background: transparent;
             cursor: pointer;
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: all 0.3s ease;
         }
-        .control-btn:hover { border-color: #ffffff; }
         .btn-icon {
             width: 0;
             height: 0;
@@ -221,7 +199,6 @@
             border-width: 8px 0 8px 14px;
             border-color: transparent transparent transparent #ffffff;
             transform: translateX(2px);
-            transition: all 0.2s ease;
         }
         .control-btn.playing .btn-icon {
             border-style: double;
@@ -229,17 +206,6 @@
             border-color: transparent transparent transparent #ffffff;
             transform: translateX(0px);
         }
-
-        .pomo-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            width: 100%;
-        }
-        .pomo-status { font-size: 0.6rem; opacity: 0.4; text-transform: uppercase; }
-
-        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -250,7 +216,7 @@
 
     <main class="app-container" id="gesture-zone">
         <header class="app-header">
-            <span class="system-status">● Core Engine Active</span>
+            <span>● System Active</span>
             <span id="frequency-readout">000.00 Hz</span>
         </header>
 
@@ -261,26 +227,18 @@
         </div>
 
         <div class="visualizer-wrapper">
-            <div class="geo-ring outer-ring"></div>
-            <div class="geo-ring mid-ring"></div>
             <canvas id="sound-visualizer"></canvas>
-            
             <div class="circadian-phase">
                 <span id="current-state">Focus</span>
                 <span id="timer-display">00:00:00</span>
-                <div class="swipe-indicator">‹ swipe to shift ›</div>
+                <div class="swipe-indicator">‹ swipe anywhere to shift ›</div>
             </div>
         </div>
 
         <div class="controls-wrapper">
             <div class="slider-container">
-                <span class="slider-label">Intens</span>
+                <span class="slider-label">Vol</span>
                 <input type="range" id="intensity-slider" class="slider" min="0" max="100" value="50">
-            </div>
-
-            <div id="pomo-module-container" class="pomo-container" style="display: none;">
-                <button id="pomo-toggle-btn" class="pomo-btn">Start Focus Cycle</button>
-                <div id="pomo-status-text" class="pomo-status">Session 1/4</div>
             </div>
 
             <div class="timer-select-container">
@@ -291,8 +249,57 @@
             </div>
 
             <button id="play-pause-btn" class="control-btn">
-                <span class="btn-icon"></span>
+                <div class="btn-icon"></div>
             </button>
         </div>
     </main>
+
+    <audio id="silent-bg-anchor" loop muted playsinline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
+
+    <script>
+    const appState = {
+        audioContext: null,
+        brownNoiseNode: null,
+        filterNode: null,
+        analyserNode: null,
+        gainNode: null,
+        isPlaying: false,
+        currentPhase: 'Focus',
+        manualPhaseIndex: 2,
+        sleepTimerId: null,
+        sleepTimeRemaining: 0,
+        activeExercise: null, 
+        renderTime: 0
+    };
+
+    const CIRCADIAN_PHASES = [
+        { name: 'Sleep', bgColor: '#020204', color: '#5b83b3', frequency: 120 },
+        { name: 'Wake Up', bgColor: '#060604', color: '#dfb15b', frequency: 280 },
+        { name: 'Focus', bgColor: '#030303', color: '#ffffff', frequency: 500 },
+        { name: 'Relax', bgColor: '#050406', color: '#d9815b', frequency: 220 }
+    ];
+
+    const canvas = document.getElementById('sound-visualizer');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+        canvas.width = 260 * window.devicePixelRatio;
+        canvas.height = 260 * window.devicePixelRatio;
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    resizeCanvas();
+
+    // GRAPHICS GENERATION LOOPS
+    function renderLoop() {
+        ctx.clearRect(0, 0, 260, 260);
+        const cx = 130;
+        const cy = 130;
+        appState.renderTime += 0.02;
+
+        let dataArray = new Uint8Array(32);
+        if (appState.isPlaying && appState.analyserNode) {
+            appState.analyserNode.getByteFrequencyData(dataArray);
+        }
+
+        let currentTargetPhase = CIRCADIAN_PHASES[appState.manualPhaseIndex];
 
