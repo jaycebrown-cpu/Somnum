@@ -11,6 +11,16 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- TEMPORAL MOBILE INSPECTOR DIAGNOSTIC -->
+<div id="mobile-error-log" style="color: #ff6464; font-family: monospace; font-size: 11px; padding: 20px; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999; background: rgba(0,0,0,0.9); display: none; word-wrap: break-word;"></div>
+<script>
+    window.addEventListener('error', function(e) {
+        var log = document.getElementById('mobile-error-log');
+        log.style.display = 'block';
+        log.innerHTML += '<br>⚠️ ' + e.message + ' in ' + e.filename + ' line ' + e.lineno;
+    });
+</script>
+
     <div class="frame-corner top-left"></div>
     <div class="frame-corner top-right"></div>
     <div class="frame-corner bottom-left"></div>
