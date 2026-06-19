@@ -67,4 +67,275 @@ body::before {
 
 .exercise-selector-container {
     display: flex;
-    ga
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+    margin-top: 15px;
+    z-index: 4;
+}
+
+.exercise-btn {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    color: rgba(255, 255, 255, 0.4);
+    font-family: var(--font-mono);
+    font-size: 8px;
+    padding: 6px 12px;
+    border-radius: 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.exercise-btn:hover {
+    border-color: var(--accent-color);
+    color: #ffffff;
+}
+
+.exercise-btn.exercise-active {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 10px var(--accent-color);
+}
+
+.visualizer-wrapper {
+    position: relative;
+    width: 380px;
+    height: 380px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#sound-visualizer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    mix-blend-mode: screen;
+}
+
+.geo-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px dashed var(--border-color);
+    pointer-events: none;
+}
+.outer-ring {
+    width: 360px;
+    height: 360px;
+    animation: rotateClockwise 40s linear infinite;
+}
+.mid-ring {
+    width: 280px;
+    height: 280px;
+    border-style: dotted;
+    animation: rotateCounterClockwise 25s linear infinite;
+}
+
+@keyframes rotateClockwise { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes rotateCounterClockwise { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+
+.circadian-phase {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: rgba(3, 3, 3, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 3;
+}
+
+#current-state {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--accent-color);
+    text-shadow: 0 0 10px var(--accent-color);
+    transition: color 2s ease, text-shadow 2s ease;
+}
+
+#timer-display {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.3);
+    margin-top: 8px;
+}
+
+.controls-wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+}
+
+.slider-container {
+    width: 80%;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.slider-label { font-size: 8px; color: rgba(255, 255, 255, 0.3); }
+
+.slider {
+    -webkit-appearance: none;
+    appearance: none;
+    flex-grow: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    outline: none;
+}
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 0 8px #ffffff;
+}
+
+.control-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+.control-btn:hover { border-color: var(--accent-color); }
+
+.btn-icon {
+    width: 0; 
+    height: 0; 
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 10px solid #ffffff;
+    margin-left: 3px;
+    transition: all 0.2s ease;
+}
+.playing .btn-icon {
+    width: 8px;
+    height: 10px;
+    border: none;
+    border-left: 3px solid #ffffff;
+    border-right: 3px solid #ffffff;
+    margin-left: 0;
+}
+
+#gesture-zone {
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+.swipe-indicator {
+    font-size: 7px;
+    color: rgba(255, 255, 255, 0.2);
+    margin-top: 10px;
+    letter-spacing: 0.05em;
+    animation: pulseHint 2.5s ease-in-out infinite;
+}
+
+@keyframes pulseHint {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+}
+
+.timer-select-container {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: -10px;
+}
+
+.timer-opt-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.4);
+    font-family: var(--font-mono);
+    font-size: 8px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.timer-opt-btn:hover {
+    border-color: var(--accent-color);
+    color: #ffffff;
+}
+
+.timer-opt-btn.active-timer {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    box-shadow: 0 0 8px var(--accent-color);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+#cancel-timer-btn {
+    border-color: rgba(255, 0, 0, 0.2);
+    color: rgba(255, 0, 0, 0.5);
+}
+#cancel-timer-btn:hover {
+    border-color: rgb(255, 100, 100);
+    color: #ff6464;
+}
+
+.pomo-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: -5px;
+    animation: fadeInUI 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes fadeInUI {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.pomo-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.pomo-btn:hover {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+}
+
+.pomo-btn.pomo-active {
+    border-color: #ff6464;
+    color: #ff6464;
+    box-shadow: 0 0 10px rgba(255, 100, 100, 0.1);
+}
+
+.pomo-status {
+    font-size: 7px;
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
