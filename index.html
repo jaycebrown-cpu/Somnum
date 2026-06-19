@@ -4,10 +4,244 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Somnum Engine</title>
-    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* 1. Global Variables & Design Tokens */
+        :root {
+            --bg-color: #030303;
+            --accent-color: #ffffff;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        /* 2. Base Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--accent-color);
+            font-family: var(--font-mono);
+            transition: background-color 1.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        /* 3. Aesthetic Frame Overlays */
+        .frame-corner {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            z-index: 10;
+            pointer-events: none;
+        }
+        .top-left { top: 20px; left: 20px; border-right: none; border-bottom: none; }
+        .top-right { top: 20px; right: 20px; border-left: none; border-bottom: none; }
+        .bottom-left { bottom: 20px; left: 20px; border-right: none; border-top: none; }
+        .bottom-right { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+
+        /* 4. Layout Container */
+        .app-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 40px 24px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 5. Header Components */
+        .app-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.6;
+        }
+        .system-status { display: flex; align-items: center; gap: 6px; }
+
+        /* 6. Mode / Exercise Selectors */
+        .exercise-selector-container {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .exercise-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--accent-color);
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 6px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .exercise-btn.active {
+            background: var(--accent-color);
+            color: var(--bg-color);
+            border-color: var(--accent-color);
+        }
+
+        /* 7. Centered Audio Visualizer Core */
+        .visualizer-wrapper {
+            position: relative;
+            width: 85vmin;
+            height: 85vmin;
+            max-width: 340px;
+            max-height: 340px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 3;
+        }
+        .geo-ring {
+            position: absolute;
+            border: 1px dashed rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .outer-ring { width: 100%; height: 100%; animation: spin 120s linear infinite; }
+        .mid-ring { width: 75%; height: 75%; animation: spin 60s linear infinite reverse; }
+
+        /* 8. Inner Circular Copy Layer */
+        .circadian-phase {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 4;
+            pointer-events: none;
+        }
+        #current-state {
+            font-size: 1.1rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        #timer-display {
+            font-size: 0.75rem;
+            opacity: 0.5;
+            letter-spacing: 1px;
+        }
+        .swipe-indicator {
+            font-size: 0.55rem;
+            opacity: 0.25;
+            margin-top: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* 9. Lower Control Rack */
+        .controls-wrapper {
+            width: 100%;
+            max-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+        .slider-container {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .slider-label { font-size: 0.65rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
+        .slider {
+            flex-grow: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            height: 2px;
+            outline: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+        }
+
+        /* 10. Interactive Button System */
+        .timer-select-container { display: flex; gap: 10px; }
+        .timer-opt-btn, .pomo-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--accent-color);
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .timer-opt-btn.active { border-color: var(--accent-color); background: rgba(255,255,255,0.05); }
+
+        .control-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        .control-btn:hover { border-color: var(--accent-color); }
+        .btn-icon {
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 8px 0 8px 14px;
+            border-color: transparent transparent transparent var(--accent-color);
+            transform: translateX(2px);
+            transition: all 0.2s ease;
+        }
+        .control-btn.playing .btn-icon {
+            border-style: double;
+            border-width: 0px 0px 0px 14px;
+            border-color: transparent transparent transparent var(--accent-color);
+            transform: translateX(0px);
+        }
+
+        .pomo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+        }
+        .pomo-status { font-size: 0.6rem; opacity: 0.4; text-transform: uppercase; }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
     <div class="frame-corner top-left"></div>
@@ -54,18 +288,8 @@
                 <button class="timer-opt-btn" data-minutes="1">1M</button>
                 <button class="timer-opt-btn" data-minutes="15">15M</button>
                 <button class="timer-opt-btn" data-minutes="30">30M</button>
-                <button class="timer-opt-btn" id="cancel-timer-btn" style="display: none;">✕</button>
-            </div>
-
-            <button id="play-pause-btn" class="control-btn">
-                <span class="btn-icon"></span>
-            </button>
-        </div>
-    </main>
-
-    <audio id="silent-bg-anchor" loop muted playsinline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
-
     <script>
+    // 1. Monolithic State Architecture
     const appState = {
         audioContext: null,
         brownNoiseNode: null,
@@ -76,14 +300,14 @@
         currentPhase: '',
         manualPhaseIndex: -1,
         sleepTimerId: null,
-        fadeDuration: 10,
+        sleepTimeRemaining: 0,
         pomoTimerId: null,
         pomoIsActive: false,
-        pomoCurrentMode: 'work',
+        pomoCurrentMode: 'work', // 'work' or 'break'
         pomoTimeRemaining: 0,
         pomoCycleCount: 1,
-        activeExercise: null,
-        orbitSystem: null
+        activeExercise: null, // null, 'breathe', 'meditate', or 'attention'
+        renderTime: 0
     };
 
     const CIRCADIAN_PHASES = [
@@ -93,101 +317,208 @@
         { name: 'Relax', startHour: 17, endHour: 22, bgColor: '#050406', color: '#d9815b', frequency: 220 }
     ];
 
+    // 2. Visual Systems Rendering & Logic
+    const canvas = document.getElementById('sound-visualizer');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = rect.width * window.devicePixelRatio;
+        canvas.height = rect.height * window.devicePixelRatio;
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function renderLoop() {
+        const width = canvas.width / window.devicePixelRatio;
+        const height = canvas.height / window.devicePixelRatio;
+        ctx.clearRect(0, 0, width, height);
+
+        const centerX = width / 2;
+        const centerY = height / 2;
+        appState.renderTime += 0.02;
+
+        let dataArray = new Uint8Array(32);
+        if (appState.isPlaying && appState.analyserNode) {
+            appState.analyserNode.getByteFrequencyData(dataArray);
+        }
+
+        const currentAccentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+
+        if (appState.activeExercise === 'meditate') {
+            // SQUIGGLY ORANGE STRING RENDERING ENGINE
+            ctx.beginPath();
+            ctx.strokeStyle = '#ff7a00'; // Pure bright orange string
+            ctx.lineWidth = 2.5;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(255, 122, 0, 0.4)';
+
+            const baseRadius = Math.min(width, height) * 0.28;
+
+            for (let i = 0; i <= 128; i++) {
+                const angle = (i / 128) * Math.PI * 2;
+                
+                // Audio signal + layered mathematical noise waves
+                const audioMod = dataArray[i % 32] ? (dataArray[i % 32] / 255) * 22 : 0;
+                const wave1 = Math.sin(angle * 8 + appState.renderTime * 1.5) * 12;
+                const wave2 = Math.cos(angle * 4 - appState.renderTime * 0.8) * 6;
+                
+                const finalRadius = baseRadius + wave1 + wave2 + audioMod;
+                const x = centerX + Math.cos(angle) * finalRadius;
+                const y = centerY + Math.sin(angle) * finalRadius;
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0; // Clear shadow layer for system performance
+
+        } else if (appState.activeExercise === 'breathe') {
+            // EXPANDING OVAL / DUAL HORIZONTAL CORE LOBES
+            const audioScale = dataArray[0] ? (dataArray[0] / 255) * 15 : 0;
+            
+            // Core breathing cycle (4s inhale, 4s exhale)
+            const breathCycle = Math.sin(Date.now() / 1273); 
+            const horizontalExpansion = 55 + (breathCycle * 40) + audioScale;
+            const verticalExpansion = 40 + (breathCycle * 10) + (audioScale * 0.5);
+
+            ctx.beginPath();
+            ctx.strokeStyle = currentAccentColor;
+            ctx.lineWidth = 1.5;
+
+            // Generate structural mesh of concentric breathing vectors
+            for (let i = 0; i < 3; i++) {
+                const layerOffset = i * 12;
+                const rx = Math.max(5, horizontalExpansion - layerOffset);
+                const ry = Math.max(5, verticalExpansion - (layerOffset * 0.5));
+                
+                ctx.beginPath();
+                ctx.ellipse(centerX, centerY, rx, ry, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = i === 0 ? currentAccentColor : `rgba(255,255,255,${0.4 - i * 0.15})`;
+                ctx.stroke();
+            }
+
+            // Central anchoring node
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 6 + (audioScale * 0.2), 0, Math.PI * 2);
+            ctx.fillStyle = currentAccentColor;
+            ctx.fill();
+
+        } else {
+            // DEFAULT AMBIENT STATE / ATTENTION MESH (Circular Geometric Rings)
+            ctx.beginPath();
+            ctx.strokeStyle = currentAccentColor;
+            ctx.lineWidth = 1.5;
+            const baseRadius = Math.min(width, height) * 0.3;
+
+            for (let i = 0; i <= 64; i++) {
+                const angle = (i / 64) * Math.PI * 2;
+                const audioMod = dataArray[i % 32] ? (dataArray[i % 32] / 255) * 18 : 0;
+                const organicWarp = Math.sin(angle * 3 + appState.renderTime) * 4;
+
+                const r = baseRadius + audioMod + organicWarp;
+                const x = centerX + Math.cos(angle) * r;
+                const y = centerY + Math.sin(angle) * r;
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        requestAnimationFrame(renderLoop);
+    }
+    requestAnimationFrame(renderLoop);
+
+    // 3. Circadian Cycle Mechanics
     function applyPhaseData(phase) {
         appState.currentPhase = phase.name;
         document.getElementById('current-state').textContent = phase.name;
         document.documentElement.style.setProperty('--bg-color', phase.bgColor);
         document.documentElement.style.setProperty('--accent-color', phase.color);
         document.getElementById('frequency-readout').textContent = `${phase.frequency.toFixed(2)} Hz`;
-        if (appState.filterNode) appState.filterNode.frequency.setValueAtTime(phase.frequency, appState.audioContext.currentTime);
+        
+        if (appState.filterNode && appState.audioContext) {
+            appState.filterNode.frequency.setValueAtTime(phase.frequency, appState.audioContext.currentTime);
+        }
+
         const pomoUI = document.getElementById('pomo-module-container');
-        if (phase.name === 'Focus') pomoUI.style.display = 'flex';
-        else { pomoUI.style.display = 'none'; if (appState.pomoIsActive) resetPomodoroEngine(); }
+        if (phase.name === 'Focus') {
+            pomoUI.style.display = 'flex';
+        } else {
+            pomoUI.style.display = 'none';
+            if (appState.pomoIsActive) resetPomodoroEngine();
+        }
     }
 
     function updateCircadianClock() {
         const now = new Date();
-        if (appState.sleepTimerId === null && appState.pomoIsActive === false) {
+        
+        // Render system time asset if no countdown active
+        if (appState.sleepTimerId === null && !appState.pomoIsActive) {
             document.getElementById('timer-display').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
         }
+
         if (appState.manualPhaseIndex === -1) {
             const currentHour = now.getHours();
-            const activePhase = CIRCADIAN_PHASES.find(p => p.startHour > p.endHour ? (currentHour >= p.startHour || currentHour < p.endHour) : (currentHour >= p.startHour && currentHour < p.endHour));
-            if (activePhase && appState.currentPhase !== activePhase.name) applyPhaseData(activePhase);
+            const activePhase = CIRCADIAN_PHASES.find(p => {
+                return p.startHour > p.endHour 
+                    ? (currentHour >= p.startHour || currentHour < p.endHour) 
+                    : (currentHour >= p.startHour && currentHour < p.endHour);
+            });
+            if (activePhase && appState.currentPhase !== activePhase.name) {
+                applyPhaseData(activePhase);
+            }
         }
     }
 
+    // 4. Touch Navigation Swipe Tracking
     let touchStartX = 0;
     const gestureZone = document.getElementById('gesture-zone');
-    gestureZone.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches.screenX; }, { passive: true });
+    gestureZone.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
     gestureZone.addEventListener('touchend', (e) => {
-        const touchEndX = e.changedTouches.screenX;
+        const touchEndX = e.changedTouches[0].screenX;
         const swipeDistance = touchEndX - touchStartX;
         const threshold = 60;
+
         if (Math.abs(swipeDistance) < threshold) return;
-        if (appState.manualPhaseIndex === -1) appState.manualPhaseIndex = CIRCADIAN_PHASES.findIndex(p => p.name === appState.currentPhase);
-        if (swipeDistance < 0) appState.manualPhaseIndex = (appState.manualPhaseIndex + 1) % CIRCADIAN_PHASES.length;
-        else appState.manualPhaseIndex = (appState.manualPhaseIndex - 1 + CIRCADIAN_PHASES.length) % CIRCADIAN_PHASES.length;
+
+        if (appState.manualPhaseIndex === -1) {
+            appState.manualPhaseIndex = CIRCADIAN_PHASES.findIndex(p => p.name === appState.currentPhase);
+        }
+
+        if (swipeDistance < 0) {
+            appState.manualPhaseIndex = (appState.manualPhaseIndex + 1) % CIRCADIAN_PHASES.length;
+        } else {
+            appState.manualPhaseIndex = (appState.manualPhaseIndex - 1 + CIRCADIAN_PHASES.length) % CIRCADIAN_PHASES.length;
+        }
+
+        // Drop manual exercise flags if manually choosing cycle states
+        document.querySelectorAll('.exercise-btn').forEach(btn => btn.classList.remove('active'));
+        appState.activeExercise = null;
+
         applyPhaseData(CIRCADIAN_PHASES[appState.manualPhaseIndex]);
     }, { passive: true });
 
+    // 5. Native Browser DSP Sound Synthesis
     function initAudio() {
         appState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const bufferSize = 2 * appState.audioContext.sampleRate;
-        const noiseBuffer = appState.audioContext.createBuffer(1, bufferSize, appState.audioContext.sampleRate);
+        const sampleRate = appState.audioContext.sampleRate;
+        const bufferSize = 2 * sampleRate;
+        const noiseBuffer = appState.audioContext.createBuffer(1, bufferSize, sampleRate);
         const output = noiseBuffer.getChannelData(0);
+        
         let lastOut = 0.0;
         for (let i = 0; i < bufferSize; i++) {
             const white = Math.random() * 2 - 1;
-            output[i] = (lastOut + (0.02 * white)) / 1.02; lastOut = output[i]; output[i] *= 3.5;
+            // 1st order brown noise generation filter
+            output[i] = (lastOut + (0.02 * white)) / 1.02;
+            lastOut = output[i];
+            output[i] *= 3.5; 
         }
+
         appState.brownNoiseNode = appState.audioContext.createBufferSource();
-        appState.brownNoiseNode.buffer = noiseBuffer; appState.brownNoiseNode.loop = true;
-        appState.filterNode = appState.audioContext.createBiquadFilter(); appState.filterNode.type = 'lowpass';
-        appState.analyserNode = appState.audioContext.createAnalyser(); appState.analyserNode.fftSize = 64;
-        appState.gainNode = appState.audioContext.createGain(); appState.gainNode.gain.setValueAtTime(1.0, appState.audioContext.currentTime);
-        appState.brownNoiseNode.connect(appState.filterNode); appState.filterNode.connect(appState.gainNode);
-        appState.gainNode.connect(appState.analyserNode); appState.analyserNode.connect(appState.audioContext.destination);
-        appState.brownNoiseNode.start(0);
-        const activeTarget = appState.manualPhaseIndex !== -1 ? CIRCADIAN_PHASES[appState.manualPhaseIndex] : CIRCADIAN_PHASES.find(p => p.name === appState.currentPhase);
-        if (activeTarget) applyPhaseData(activeTarget);
-    }
-
-    const canvas = document.getElementById('sound-visualizer');
-    const ctx = canvas.getContext('2d');
-    function resizeCanvas() {
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = 380 * dpr; canvas.height = 380 * dpr; ctx.scale(dpr, dpr);
-    }
-    resizeCanvas();
-
-    function drawVisualizer() {
-        if (!appState.isPlaying) return;
-        requestAnimationFrame(drawVisualizer);
-        const bufferLength = appState.analyserNode.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        appState.analyserNode.getByteFrequencyData(dataArray);
-        ctx.clearRect(0, 0, 380, 380);
-        const centerX = 380 / 2; const centerY = 380 / 2;
-        const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
-        const time = performance.now() * 0.001;
-
-        if (appState.activeExercise === 'breathe') {
-            const breathCycle = (Math.sin(time * (Math.PI / 4)) + 1) / 2;
-            const radius = 60 + breathCycle * 65;
-            ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.strokeStyle = accentColor; ctx.lineWidth = 2; ctx.stroke();
-            document.getElementById('current-state').textContent = breathCycle > 0.5 ? "Inhale..." : "Exhale...";
-            return;
-        }
-
-        if (appState.activeExercise === 'attention') {
-            if (!appState.orbitSystem) {
-                appState.orbitSystem = { activeRing: 0, currentAngle: 0, lifetimeRemaining: 180, dotSize: 0, rings: [45, 85, 125] };
-            }
-            const sys = appState.orbitSystem;
-            ctx.beginPath(); ctx.arc(centerX, centerY, 8 + Math.sin(time * 3) * 1.5, 0, 2 * Math.PI);
-            ctx.fillStyle = accentColor; ctx.globalAlpha = 0.15; ctx.fill();
-            ctx.globalAlpha = 0.8; ctx.lineWidth = 1; ctx.strokeStyle = accentColor; ctx.stroke();
-
-            sys.rings.forEach((radius, idx) => {
+        appState.brownNoiseNode.buffer = noiseBuffer;
+        appState.brownNoiseNode.loop = true;
