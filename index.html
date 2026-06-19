@@ -3,244 +3,293 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Endel Engine</title>
-    <!-- PWA Manifest & iOS Theme Support -->
+    <title>Endel Engine Portal</title>
+    <!-- PWA Manifest & iOS Standalone Theme Support -->
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="frame-corner top-left"></div>
-    <div class="frame-corner top-right"></div>
-    <div class="frame-corner bottom-left"></div>
-    <div class="frame-corner bottom-right"></div>
-
-    <!-- Interactive Gesture Area Container -->
-    <main class="app-container" id="gesture-zone">
-        <header class="app-header">
-            <span class="system-status">● Core Engine Active</span>
-            <span id="frequency-readout">000.00 Hz</span>
-        </header>
-
-        <div class="exercise-selector-container">
-            <button class="exercise-btn" data-type="breathe">Breathwork</button>
-            <button class="exercise-btn" data-type="meditate">Meditation</button>
-            <button class="exercise-btn" data-type="attention">Attention</button>
-        </div>
-
-        <div class="visualizer-wrapper">
-            <div class="geo-ring outer-ring"></div>
-            <div class="geo-ring mid-ring"></div>
-            <canvas id="sound-visualizer"></canvas>
-            
-            <div class="circadian-phase">
-                <span id="current-state">Focus</span>
-                <span id="timer-display">00:00:00</span>
-                <div class="swipe-indicator">‹ swipe to shift ›</div>
-            </div>
-        </div>
-
-        <div class="controls-wrapper">
-            <div class="slider-container">
-                <span class="slider-label">Intens</span>
-                <input type="range" id="intensity-slider" class="slider" min="0" max="100" value="50">
-            </div>
-
-            <div id="pomo-module-container" class="pomo-container" style="display: none;">
-                <button id="pomo-toggle-btn" class="pomo-btn">Start Focus Cycle</button>
-                <div id="pomo-status-text" class="pomo-status">Session 1/4</div>
-            </div>
-
-            <div class="timer-select-container">
-                <button class="timer-opt-btn" data-minutes="1">1M</button>
-                <button class="timer-opt-btn" data-minutes="15">15M</button>
-                <button class="timer-opt-btn" data-minutes="30">30M</button>
-                <button class="timer-opt-btn" id="cancel-timer-btn" style="display: none;">✕</button>
-            </div>
-
-            <button id="play-pause-btn" class="control-btn">
-                <span class="btn-icon"></span>
-            </button>
-        </div>
-    </main>
-
-    <audio id="silent-bg-anchor" loop muted playsinline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
-
-        <script>
-    // --- 1. GLOBAL ENGINE STATE ---
-    const appState = {
-        audioContext: null,
-        brownNoiseNode: null,
-        filterNode: null,
-        analyserNode: null,
-        gainNode: null,
-        isPlaying: false,
-        currentPhase: '',
-        manualPhaseIndex: -1,
-        sleepTimerId: null,
-        fadeDuration: 10,
-        pomoTimerId: null,
-        pomoIsActive: false,
-        pomoCurrentMode: 'work',
-        pomoTimeRemaining: 0,
-        pomoCycleCount: 1,
-        activeExercise: null,
-        orbitSystem: null
-    };
-
-    const CIRCADIAN_PHASES = [
-        { name: 'Sleep', startHour: 22, endHour: 5, bgColor: '#020204', color: '#5b83b3', frequency: 120 },
-        { name: 'Wake Up', startHour: 5, endHour: 9, bgColor: '#060604', color: '#dfb15b', frequency: 280 },
-        { name: 'Focus', startHour: 9, endHour: 17, bgColor: '#030303', color: '#ffffff', frequency: 500 },
-        { name: 'Relax', startHour: 17, endHour: 22, bgColor: '#050406', color: '#d9815b', frequency: 220 }
-    ];
-
-    function applyPhaseData(phase) {
-        appState.currentPhase = phase.name;
-        document.getElementById('current-state').textContent = phase.name;
-        document.documentElement.style.setProperty('--bg-color', phase.bgColor);
-        document.documentElement.style.setProperty('--accent-color', phase.color);
-        document.getElementById('frequency-readout').textContent = `${phase.frequency.toFixed(2)} Hz`;
-        if (appState.filterNode) appState.filterNode.frequency.setValueAtTime(phase.frequency, appState.audioContext.currentTime);
-        const pomoUI = document.getElementById('pomo-module-container');
-        if (phase.name === 'Focus') pomoUI.style.display = 'flex';
-        else { pomoUI.style.display = 'none'; if (appState.pomoIsActive) resetPomodoroEngine(); }
-    }
-
-    function updateCircadianClock() {
-        const now = new Date();
-        if (appState.sleepTimerId === null && appState.pomoIsActive === false) {
-            document.getElementById('timer-display').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-        }
-        if (appState.manualPhaseIndex === -1) {
-            const currentHour = now.getHours();
-            const activePhase = CIRCADIAN_PHASES.find(p => p.startHour > p.endHour ? (currentHour >= p.startHour || currentHour < p.endHour) : (currentHour >= p.startHour && currentHour < p.endHour));
-            if (activePhase && appState.currentPhase !== activePhase.name) applyPhaseData(activePhase);
-        }
-    }
-
-    let touchStartX = 0;
-    const gestureZone = document.getElementById('gesture-zone');
-    gestureZone.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches.screenX; }, { passive: true });
-    gestureZone.addEventListener('touchend', (e) => {
-        const touchEndX = e.changedTouches.screenX;
-        const swipeDistance = touchEndX - touchStartX;
-        const threshold = 60;
-        if (Math.abs(swipeDistance) < threshold) return;
-        if (appState.manualPhaseIndex === -1) appState.manualPhaseIndex = CIRCADIAN_PHASES.findIndex(p => p.name === appState.currentPhase);
-        if (swipeDistance < 0) appState.manualPhaseIndex = (appState.manualPhaseIndex + 1) % CIRCADIAN_PHASES.length;
-        else appState.manualPhaseIndex = (appState.manualPhaseIndex - 1 + CIRCADIAN_PHASES.length) % CIRCADIAN_PHASES.length;
-        applyPhaseData(CIRCADIAN_PHASES[appState.manualPhaseIndex]);
-    }, { passive: true });
-
-    function initAudio() {
-        appState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const bufferSize = 2 * appState.audioContext.sampleRate;
-        const noiseBuffer = appState.audioContext.createBuffer(1, bufferSize, appState.audioContext.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        let lastOut = 0.0;
-        for (let i = 0; i < bufferSize; i++) {
-            const white = Math.random() * 2 - 1;
-            output[i] = (lastOut + (0.02 * white)) / 1.02; lastOut = output[i]; output[i] *= 3.5;
-        }
-        appState.brownNoiseNode = appState.audioContext.createBufferSource();
-        appState.brownNoiseNode.buffer = noiseBuffer; appState.brownNoiseNode.loop = true;
-        appState.filterNode = appState.audioContext.createBiquadFilter(); appState.filterNode.type = 'lowpass';
-        appState.analyserNode = appState.audioContext.createAnalyser(); appState.analyserNode.fftSize = 64;
-        appState.gainNode = appState.audioContext.createGain(); appState.gainNode.gain.setValueAtTime(1.0, appState.audioContext.currentTime);
-        appState.brownNoiseNode.connect(appState.filterNode); appState.filterNode.connect(appState.gainNode);
-        appState.gainNode.connect(appState.analyserNode); appState.analyserNode.connect(appState.audioContext.destination);
-        appState.brownNoiseNode.start(0);
-        const activeTarget = appState.manualPhaseIndex !== -1 ? CIRCADIAN_PHASES[appState.manualPhaseIndex] : CIRCADIAN_PHASES.find(p => p.name === appState.currentPhase);
-        if (activeTarget) applyPhaseData(activeTarget);
-    }
-
-    const canvas = document.getElementById('sound-visualizer');
-    const ctx = canvas.getContext('2d');
-    function resizeCanvas() {
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = 380 * dpr; canvas.height = 380 * dpr; ctx.scale(dpr, dpr);
-    }
-    resizeCanvas();
-
-    function drawVisualizer() {
-        if (!appState.isPlaying) return;
-        requestAnimationFrame(drawVisualizer);
-        const bufferLength = appState.analyserNode.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        appState.analyserNode.getByteFrequencyData(dataArray);
-        ctx.clearRect(0, 0, 380, 380);
-        const centerX = 380 / 2; const centerY = 380 / 2;
-        const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
-        const time = performance.now() * 0.001;
-
-        if (appState.activeExercise === 'breathe') {
-            const breathCycle = (Math.sin(time * (Math.PI / 4)) + 1) / 2;
-            const radius = 60 + breathCycle * 65;
-            ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.strokeStyle = accentColor; ctx.lineWidth = 2; ctx.stroke();
-            document.getElementById('current-state').textContent = breathCycle > 0.5 ? "Inhale..." : "Exhale...";
-            return;
+    
+    <style>
+        /* --- 1. PREMIUM MONOCHROME MATRIX SYSTEM --- */
+        :root {
+            --bg-color: #030303;
+            --accent-color: #ffffff;
+            --panel-bg: rgba(255, 255, 255, 0.02);
+            --border-color: rgba(255, 255, 255, 0.05);
+            --font-mono: "Courier New", Courier, monospace;
         }
 
-        if (appState.activeExercise === 'attention') {
-            if (!appState.orbitSystem) {
-                appState.orbitSystem = { activeRing: 0, currentAngle: 0, lifetimeRemaining: 180, dotSize: 0, rings: [45, 80, 120] };
-            }
-            const sys = appState.orbitSystem;
-            ctx.beginPath(); ctx.arc(centerX, centerY, 8 + Math.sin(time * 3) * 1.5, 0, 2 * Math.PI);
-            ctx.fillStyle = accentColor; ctx.globalAlpha = 0.15; ctx.fill();
-            ctx.globalAlpha = 0.8; ctx.lineWidth = 1; ctx.strokeStyle = accentColor; ctx.stroke();
-
-            sys.rings.forEach((radius, idx) => {
-                ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-                ctx.strokeStyle = accentColor; ctx.lineWidth = (idx === sys.activeRing) ? 0.8 : 0.2;
-                ctx.globalAlpha = (idx === sys.activeRing) ? 0.3 : 0.08; ctx.stroke();
-            });
-            ctx.globalAlpha = 1.0;
-            sys.currentAngle += 0.015 * (3 / (sys.activeRing + 1)); sys.lifetimeRemaining--;
-
-            if (sys.lifetimeRemaining > 150) sys.dotSize = (180 - sys.lifetimeRemaining) / 3;
-            else if (sys.lifetimeRemaining < 30) sys.dotSize = sys.lifetimeRemaining / 3;
-            else sys.dotSize = 10;
-
-            const activeRadius = sys.rings[sys.activeRing];
-            const dotX = centerX + Math.cos(sys.currentAngle) * activeRadius;
-            const dotY = centerY + Math.sin(sys.currentAngle) * activeRadius;
-
-            if (sys.dotSize > 0) {
-                ctx.beginPath(); ctx.arc(dotX, dotY, sys.dotSize / 2, 0, 2 * Math.PI);
-                ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 15; ctx.shadowColor = accentColor; ctx.fill(); ctx.shadowBlur = 0;
-                ctx.beginPath(); ctx.arc(dotX, dotY, sys.dotSize, 0, 2 * Math.PI);
-                ctx.strokeStyle = accentColor; ctx.lineWidth = 1; ctx.stroke();
-            }
-
-            if (sys.lifetimeRemaining <= 0) {
-                let nextRing = Math.floor(Math.random() * 3);
-                if (nextRing === sys.activeRing) nextRing = (nextRing + 1) % 3;
-                sys.activeRing = nextRing; sys.lifetimeRemaining = 150 + Math.random() * 90;
-                sys.currentAngle = Math.random() * Math.PI * 2;
-            }
-            return;
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: #ffffff;
+            font-family: var(--font-mono);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            letter-spacing: 0.15em;
+            transition: background-color 4.0s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
-        for (let layer = 0; layer < 3; layer++) {
-            ctx.beginPath(); const baseRadius = 95 + (layer * 15);
-            for (let i = 0; i <= 120; i++) {
-                const angle = (i / 120) * Math.PI * 2; const dataIndex = i % bufferLength; const audioIntensity = dataArray[dataIndex] / 255;
-                const waveOffset = Math.sin(angle * 6 + time * (layer + 1)) * 4; const audioOffset = audioIntensity * (12 + layer * 4);
-                const totalRadius = baseRadius + waveOffset + audioOffset;
-                const x = centerX + Math.cos(angle) * totalRadius; const y = centerY + Math.sin(angle) * totalRadius;
-                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-            }
-            ctx.closePath(); ctx.strokeStyle = accentColor; ctx.lineWidth = 1.5 / (layer + 1); ctx.globalAlpha = 0.6 / (layer + 1); ctx.stroke();
+        /* Sci-fi Crosshair Matrix Overlay Grid */
+        body::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at center, transparent 30%, var(--bg-color) 80%),
+                linear-gradient(rgba(255, 255, 255, 0.003) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.003) 1px, transparent 1px);
+            background-size: 100%, 30px 30px;
+            z-index: 0;
+            pointer-events: none;
         }
-        ctx.globalAlpha = 1.0;
-    }
 
-    document.getElementById('play-pause-btn').addEventListener('click', async () => {
-        if (!appState.audioContext) { try { initAudio(); } catch (error) { return; } }
-        const btn = document.getElementById('play-pause-btn'); const silentAudioNode = document.getElementById('silent-bg-anchor');
-</body>
-</html>
+        /* Vector Corner Framing Elements */
+        .frame-corner {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border: 1px solid var(--border-color);
+            z-index: 5;
+            pointer-events: none;
+        }
+        .top-left { top: 30px; left: 30px; border-right: none; border-bottom: none; }
+        .top-right { top: 30px; right: 30px; border-left: none; border-bottom: none; }
+        .bottom-left { bottom: 30px; left: 30px; border-right: none; border-top: none; }
+        .bottom-right { bottom: 30px; right: 30px; border-left: none; border-top: none; }
+
+        /* Mobile Click Optimization Target Zone */
+        #gesture-zone {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 450px;
+            height: 85vh;
+            padding: 20px;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: auto !important; /* Fixed iOS tap blocking */
+        }
+
+        .app-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+        }
+
+        /* Exercise Deck Controls */
+        .exercise-selector-container {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            justify-content: center;
+            margin-top: 15px;
+            position: relative;
+            z-index: 10 !important;
+            pointer-events: auto !important;
+        }
+
+        .exercise-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: rgba(255, 255, 255, 0.4);
+            font-family: var(--font-mono);
+            font-size: 8px;
+            padding: 6px 12px;
+            border-radius: 14px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            position: relative;
+            z-index: 20 !important;
+            pointer-events: auto !important;
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .exercise-btn:hover, .exercise-btn.exercise-active {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+
+        /* Visualization Core Mechanics */
+        .visualizer-wrapper {
+            position: relative;
+            width: 380px;
+            height: 380px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none; /* Let taps fall straight through background canvas lines */
+        }
+
+        #sound-visualizer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            mix-blend-mode: screen;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .geo-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px dashed var(--border-color);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .outer-ring { width: 360px; height: 360px; animation: rotateClockwise 40s linear infinite; }
+        .mid-ring { width: 280px; height: 280px; border-style: dotted; animation: rotateCounterClockwise 25s linear infinite; }
+
+        @keyframes rotateClockwise { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes rotateCounterClockwise { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+
+        /* Target Center Frame */
+        .circadian-phase {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: rgba(3, 3, 3, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        #current-state {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px var(--accent-color);
+            transition: color 2s ease, text-shadow 2s ease;
+        }
+
+        #timer-display {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.3);
+            margin-top: 8px;
+        }
+
+        .swipe-indicator {
+            font-size: 7px;
+            color: rgba(255, 255, 255, 0.2);
+            margin-top: 10px;
+            letter-spacing: 0.05em;
+            animation: pulseHint 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseHint { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+
+        /* Controls Architecture */
+        .controls-wrapper, .timer-select-container, .pomo-container {
+            position: relative;
+            z-index: 10 !important;
+            pointer-events: auto !important;
+        }
+
+        .controls-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .slider-container {
+            width: 80%;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: relative;
+            z-index: 10;
+        }
+        .slider-label { font-size: 8px; color: rgba(255, 255, 255, 0.3); pointer-events: none; }
+
+        .slider {
+            -webkit-appearance: none;
+            appearance: none;
+            flex-grow: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            position: relative;
+            z-index: 20 !important;
+            pointer-events: auto !important;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 0 8px #ffffff;
+        }
+
+        /* Pomodoro Styling */
+        .pomo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: -5px;
+            animation: fadeInUI 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        @keyframes fadeInUI { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .pomo-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 20 !important;
+            pointer-events: auto !important;
+            transition: all 0.3s ease;
+        }
+        .pomo-btn:hover, .pomo-btn.pomo-active {
+            border-color: #ff6464;
+            color: #ff6464;
+            box-shadow: 0 0 10px rgba(255, 100, 100, 0.1);
+        }
+        .pomo-status { font-size: 7px; color: rgba(255, 255, 255, 0.3); letter-spacing: 0.08em; text-transform: uppercase; pointer-events: none; }
+
+        /* Sleep Timer Buttons */
+        .timer-select-container {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: -10px;
+        }
+
+        .timer-opt-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.4);
