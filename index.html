@@ -7,14 +7,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        /* 1. Global Variables & Design Tokens */
         :root {
             --bg-color: #030303;
             --accent-color: #ffffff;
             --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         }
 
-        /* 2. Base Reset */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -27,13 +25,12 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: var(--bg-color);
-            color: var(--accent-color);
+            background-color: #030303;
+            color: #ffffff;
             font-family: var(--font-mono);
             transition: background-color 1.5s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
-        /* 3. Aesthetic Frame Overlays */
         .frame-corner {
             position: absolute;
             width: 16px;
@@ -47,7 +44,6 @@
         .bottom-left { bottom: 20px; left: 20px; border-right: none; border-top: none; }
         .bottom-right { bottom: 20px; right: 20px; border-left: none; border-top: none; }
 
-        /* 4. Layout Container */
         .app-container {
             width: 100%;
             height: 100%;
@@ -55,12 +51,11 @@
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
-            padding: 40px 24px;
+            padding: 30px 20px;
             position: relative;
             z-index: 2;
         }
 
-        /* 5. Header Components */
         .app-header {
             width: 100%;
             display: flex;
@@ -74,18 +69,17 @@
         }
         .system-status { display: flex; align-items: center; gap: 6px; }
 
-        /* 6. Mode / Exercise Selectors */
         .exercise-selector-container {
             display: flex;
             gap: 8px;
             margin-top: 10px;
             position: relative;
-            z-index: 10; /* Elevated to sit on top of canvas overlay */
+            z-index: 10;
         }
         .exercise-btn {
             background: transparent;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            color: var(--accent-color);
+            color: #ffffff;
             font-family: var(--font-mono);
             font-size: 0.7rem;
             padding: 6px 14px;
@@ -96,22 +90,22 @@
             letter-spacing: 1px;
         }
         .exercise-btn.active {
-            background: var(--accent-color);
-            color: var(--bg-color);
-            border-color: var(--accent-color);
+            background: #ffffff;
+            color: #030303;
+            border-color: #ffffff;
         }
 
-        /* 7. Centered Audio Visualizer Core */
         .visualizer-wrapper {
             position: relative;
-            width: 85vmin;
-            height: 85vmin;
-            max-width: 340px;
-            max-height: 340px;
+            width: 65vmin;
+            height: 65vmin;
+            max-width: 260px;
+            max-height: 260px;
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 1;
+            margin: 10px 0;
         }
         canvas {
             position: absolute;
@@ -120,7 +114,7 @@
             top: 0;
             left: 0;
             z-index: 3;
-            pointer-events: none; /* Allows click events to pass straight through canvas */
+            pointer-events: none;
         }
         .geo-ring {
             position: absolute;
@@ -131,7 +125,6 @@
         .outer-ring { width: 100%; height: 100%; animation: spin 120s linear infinite; }
         .mid-ring { width: 75%; height: 75%; animation: spin 60s linear infinite reverse; }
 
-        /* 8. Inner Circular Copy Layer */
         .circadian-phase {
             position: absolute;
             display: flex;
@@ -161,16 +154,15 @@
             text-transform: uppercase;
         }
 
-        /* 9. Lower Control Rack */
         .controls-wrapper {
             width: 100%;
             max-width: 300px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 15px;
             align-items: center;
             position: relative;
-            z-index: 10; /* Elevated to sit on top of canvas overlay */
+            z-index: 10;
         }
         .slider-container {
             width: 100%;
@@ -192,29 +184,28 @@
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: var(--accent-color);
+            background: #ffffff;
             cursor: pointer;
         }
 
-        /* 10. Interactive Button System */
         .timer-select-container { display: flex; gap: 10px; }
         .timer-opt-btn, .pomo-btn {
             background: transparent;
             border: 1px solid rgba(255, 255, 255, 0.15);
-            color: var(--accent-color);
+            color: #ffffff;
             font-family: var(--font-mono);
             font-size: 0.65rem;
             padding: 6px 12px;
             border-radius: 4px;
             cursor: pointer;
         }
-        .timer-opt-btn.active { border-color: var(--accent-color); background: rgba(255,255,255,0.05); }
+        .timer-opt-btn.active { border-color: #ffffff; background: rgba(255,255,255,0.05); }
 
         .control-btn {
             width: 56px;
             height: 56px;
             border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             background: transparent;
             cursor: pointer;
             display: flex;
@@ -222,20 +213,20 @@
             align-items: center;
             transition: all 0.3s ease;
         }
-        .control-btn:hover { border-color: var(--accent-color); }
+        .control-btn:hover { border-color: #ffffff; }
         .btn-icon {
             width: 0;
             height: 0;
             border-style: solid;
             border-width: 8px 0 8px 14px;
-            border-color: transparent transparent transparent var(--accent-color);
+            border-color: transparent transparent transparent #ffffff;
             transform: translateX(2px);
             transition: all 0.2s ease;
         }
         .control-btn.playing .btn-icon {
             border-style: double;
             border-width: 0px 0px 0px 14px;
-            border-color: transparent transparent transparent var(--accent-color);
+            border-color: transparent transparent transparent #ffffff;
             transform: translateX(0px);
         }
 
@@ -291,4 +282,17 @@
                 <button id="pomo-toggle-btn" class="pomo-btn">Start Focus Cycle</button>
                 <div id="pomo-status-text" class="pomo-status">Session 1/4</div>
             </div>
+
+            <div class="timer-select-container">
+                <button class="timer-opt-btn" data-minutes="1">1M</button>
+                <button class="timer-opt-btn" data-minutes="15">15M</button>
+                <button class="timer-opt-btn" data-minutes="30">30M</button>
+                <button class="timer-opt-btn" id="cancel-timer-btn" style="display: none;">✕</button>
+            </div>
+
+            <button id="play-pause-btn" class="control-btn">
+                <span class="btn-icon"></span>
+            </button>
+        </div>
+    </main>
 
